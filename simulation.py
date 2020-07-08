@@ -4,10 +4,11 @@ import sys
 import time
 from pprint import pprint
 
-g_737 = (0,0,0,1,0,0,0)
-g_747 = (0,0,1,0,0,0,0,1,0,0)
-g_a380 = (0,0,0,1,0,0,0,0,0,1,0,0,0)
-
+AIR_LAYOUT = {
+    '737': (0,0,0,1,0,0,0),
+    '747': (0,0,1,0,0,0,0,1,0,0),
+    'a380': (0,0,0,1,0,0,0,0,0,1,0,0,0),
+}
 
 class Agent(object):
 
@@ -18,12 +19,13 @@ class Agent(object):
         self.curMove = ''
         self.baggage = baggage
         self.plane = plane
+        self.group = None
 
     def __str__(self):
-        return f'{self.seat} | {self.pos} | {self.baggage}'
+        return f'{self.seat} | {self.pos} | {self.baggage} | {self.group}'
 
     def __repr__(self):
-        return f'{self.seat} | {self.pos} | {self.baggage}'
+        return f'{self.seat} | {self.pos} | {self.baggage} | {self.group}'
 
     def setGroup(self,grp):
         self.group = grp
@@ -182,8 +184,22 @@ class Plane(object):
     def empty(self, row, col):
         return len(self.squares[row][col]) == 0 and len(self.nextSquares[row][col]) == 0
 
+def flatten(lst): # Flatten a 2-d list
+    return [elem for row in lst for elem in row]
 
-def run(rows, layout, method, bag, printPlane):
+def set_groups(rows, passengers):
+    """ Divide passengers into groups """
+    # Currently emulating Window - middle aisle (back to front)
+    # Only works for 737 for now
+    for passenger in flatten(passengers):
+        if passenger.seat[1] in [0,6]:
+            passenger.group = 1
+        elif passenger.seat[1] in [1,5]:
+            passenger.group = 2
+        else:
+            passenger.group = 3
+
+def run(rows, layout, method, bag, batch_size=None, printPlane=False):
     plane = Plane(rows, layout)
     passangers = []
     seatCols = []
@@ -194,6 +210,7 @@ def run(rows, layout, method, bag, printPlane):
         else:
             aisleCols.append(i)
 
+    # Add passengers
     for row in range(rows):
         curRow = []
         for col in seatCols:
@@ -201,29 +218,35 @@ def run(rows, layout, method, bag, printPlane):
             curRow.append(Agent([row, col], baggage, plane))
         passangers.append(curRow)
 
+    set_groups(rows, passangers)
+
     # form queue
     queue = []
-    if method[0] == 'row-front':
-        step = method[1]
-        for i in range(0,rows,step):
-            batch = [p for row in passangers[i:i+step] for p in row if p]
-            random.shuffle(batch)
-            queue.extend(batch)
-    elif method[0] == 'row-back':
-        step = method[1]
-        for i in range(0,rows,step):
-            batch = [p for row in passangers[rows-i-step:rows-i] for p in row if p]
-            random.shuffle(batch)
-            if batch:
-                queue += batch
+    if method == 'row-front':
+        queue = flatten(passangers)
 
-    elif method[0] == 'random':
-        for row in passangers:
-            queue += row
+    elif method == 'row-back':
+        #batch = flatten(passangers[rows-i-step:rows-i])
+        queue = list(reversed(flatten(passangers)))
+
+    elif method == 'random':
+        queue = flatten(passangers)
         random.shuffle(queue)
+
+    elif method == 'groups-asc':
+        queue = sorted(flatten(passangers), key=lambda x: x.group)
+
+    elif method == 'groups-desc':
+        queue = sorted(flatten(passangers), key=lambda x: x.group, reverse=True)
 
     else:
         raise Exception(f'No method name {method}')
+
+    if batch_size is not None: # Break passengers into batches only if batch_size is set
+        for i in range(0,rows*len(layout),batch_size*len(layout)):
+            slice = queue[i:i+batch_size*len(layout)]
+            random.shuffle(slice)
+            queue[i:i+batch_size*len(layout)] = slice # slices are immutable
 
     # run things
     rounds = 0
@@ -252,8 +275,7 @@ def run(rows, layout, method, bag, printPlane):
         # print plane
         if printPlane:
             os.system('clear')
-
-            print(f'method: {method[0]} | batch: {method[1]}')
+            print(f'method: {method} | batch: {batch_size}')
             for _ in range(len(layout) + 1):
                 print("", end='')
             for _ in range(len(queue)):
@@ -298,33 +320,28 @@ if len(sys.argv) != 5:
 
 runs = int(sys.argv[1])
 rows = int(sys.argv[2])
-if sys.argv[3] == '737':
-    plane = g_737
-elif sys.argv[3] == '747':
-    plane = g_747
-elif sys.argv[3] == 'a380':
-    plane = g_a380
-else:
-    raise Exception(f'Unknown layout - {sys.argv[3]}')
+plane = AIR_LAYOUT[sys.argv[3]]
 
 printPlane = True if sys.argv[4] == '1' else False
 
-batch = rows//5
-methods = [ # methods - pass along with a batch parameter defined above
-    'row-back',
+batch = rows//5 # 5 batches by default
+methods = [ # methods of boarding
     'random',
+    'row-back',
     'row-front',
+    'groups-asc', # in ascending order of groups
+    'groups-desc' # in descending number of groups
 ]
 
 bag = { # actual baggage time is rounded to nearest integer
-    'mu': 18,
-    'sigma': 6,
+    'mu': 9,
+    'sigma': 2,
 }
 
 avgs = [0 for i in range(len(methods))]
 for i in range(runs):
     for i,method in enumerate(methods):
-        avgs[i] += run(rows, plane, (method,batch), bag, printPlane)
+        avgs[i] += run(rows, plane, method, bag, batch_size=batch, printPlane=printPlane)
 
 for i,av in enumerate(avgs):
     print(f'{methods[i][0]} - {round(av/runs,2)}')
