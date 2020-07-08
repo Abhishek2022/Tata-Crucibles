@@ -2,6 +2,7 @@ import random
 import os
 import sys
 import time
+from pprint import pprint
 
 g_737 = (0,0,0,1,0,0,0)
 g_747 = (0,0,1,0,0,0,0,1,0,0)
@@ -18,12 +19,21 @@ class Agent(object):
         self.baggage = baggage
         self.plane = plane
 
+    def __str__(self):
+        return f'{self.seat} | {self.pos} | {self.baggage}'
+
+    def __repr__(self):
+        return f'{self.seat} | {self.pos} | {self.baggage}'
+
+    def setGroup(self,grp):
+        self.group = grp
+
     def chooseMove(self):
-        
+
         if self.seat == self.pos:
             self.curMove = 'sit'
             return
-        
+
         if self.seat[0] > self.pos[0]:
             self.curMove = 'up'
             return
@@ -57,7 +67,7 @@ class Agent(object):
             self.standLeft()
         if self.curMove == 'standRight':
             self.standRight()
-            
+
 
     def moveRight(self):
         clear = True
@@ -149,7 +159,7 @@ class Agent(object):
 
 
 class Plane(object):
-    
+
     def __init__(self, rows, layout):
         # layout: (0,0,1,0,0,0,1,0,0)
         # 1 - isle, 0 - seat
@@ -158,7 +168,7 @@ class Plane(object):
         self.passangers = []
         self.squares = [[[] for _ in range(len(self.layout))] for _ in range(self.rows)]
         self.nextSquares = [[[] for _ in range(len(self.layout))] for _ in range(self.rows)]
-    
+
     def nextStep(self):
         self.squares = self.nextSquares
         self.nextSquares = [[[] for _ in range(len(self.layout))] for _ in range(self.rows)]
@@ -173,7 +183,7 @@ class Plane(object):
         return len(self.squares[row][col]) == 0 and len(self.nextSquares[row][col]) == 0
 
 
-def run(rows, layout, method, printPlane):
+def run(rows, layout, method, bag, printPlane):
     plane = Plane(rows, layout)
     passangers = []
     seatCols = []
@@ -183,41 +193,38 @@ def run(rows, layout, method, printPlane):
             seatCols.append(i)
         else:
             aisleCols.append(i)
+
     for row in range(rows):
         curRow = []
         for col in seatCols:
-            baggage = random.randint(0, 20)
+            baggage = int(round(random.gauss(bag['mu'], bag['sigma']),0))
             curRow.append(Agent([row, col], baggage, plane))
         passangers.append(curRow)
- 
+
     # form queue
     queue = []
-    if method[0] == 'byRows':
-        step = method[2]
-        if method[1] == 'back':
-            cur = rows-1
-        elif method[1] == 'front':
-            cur = 0
-        else:
-            print('error, invalid row order')
-            return
-        while (cur > 0 and method[1] == 'back') or (cur < rows-1 and method[1] == 'front'):
-            batch = []
-            for _ in range(step):
-                if (cur < 0 and method[1] == 'back') or (cur > rows-1 and method[1] == 'front'):
-                    break
-                batch += passangers[cur]
-                if method[1] == 'back':
-                    cur -= 1
-                elif method[1] == 'front':
-                    cur += 1
+    if method[0] == 'row-front':
+        step = method[1]
+        for i in range(0,rows,step):
+            batch = [p for row in passangers[i:i+step] for p in row if p]
             random.shuffle(batch)
-            queue += batch
-    if method[0] == 'random':
+            queue.extend(batch)
+    elif method[0] == 'row-back':
+        step = method[1]
+        for i in range(0,rows,step):
+            batch = [p for row in passangers[rows-i-step:rows-i] for p in row if p]
+            random.shuffle(batch)
+            if batch:
+                queue += batch
+
+    elif method[0] == 'random':
         for row in passangers:
             queue += row
         random.shuffle(queue)
-        
+
+    else:
+        raise Exception(f'No method name {method}')
+
     # run things
     rounds = 0
     while True:
@@ -246,13 +253,14 @@ def run(rows, layout, method, printPlane):
         if printPlane:
             os.system('clear')
 
-            print("method: {}\n".format(method))
+            print(f'method: {method[0]} | batch: {method[1]}')
             for _ in range(len(layout) + 1):
                 print("", end='')
             for _ in range(len(queue)):
                 print('<', end='')
             print('\n')
             for i in range(rows):
+                print(str(i+1).zfill(2), end=' ')
                 for j in range(len(layout)):
                     if len(plane.squares[i][j]) != 0:
                         if len(plane.squares[i][j]) > 1:
@@ -276,41 +284,47 @@ def run(rows, layout, method, printPlane):
                 print('')
             print('\nCurrent round: {}'.format(rounds))
             time.sleep(0.04)
-        
-        rounds += 1
-def main():
-    if len(sys.argv) != 5:
-        print('usage: ./boardSim [numRuns] [numRows] [layout] [printPlane]')
-        print('numRuns - Number of runs to take the average of')
-        print('numRows - Number of rows in the airplane')
-        print('layout - one of "737", "747", "a380"')
-        print('printPlane - 1 if you want the plane to be printed, 0 otherwise')
-        return
-    runs = int(sys.argv[1])
-    rows = int(sys.argv[2])
-    if sys.argv[3] == '737':
-        plane = g_737
-    elif sys.argv[3] == '747':
-        plane = g_747
-    elif sys.argv[3] == 'a380':
-        plane = g_a380
-    else:
-        print("unknown layout.")
-        return
-    printPlane = True if sys.argv[4] == '1' else False
-    randomAvg = 0
-    backAvg = 0
-    frontAvg = 0
-    
-    for _ in range(runs): 
-        randomAvg += run(rows, plane, ('random', ''), printPlane)
-        backAvg += run(rows, plane, ('byRows', 'back', 15), printPlane)
-        frontAvg += run(rows, plane, ('byRows', 'front', 15), printPlane)
 
-    randomAvg = randomAvg/float(runs)
-    frontAvg = frontAvg/float(runs)
-    backAvg = backAvg/float(runs)
-    print("Front average: {}\nBack Average: {}\nRandom Averge: {}".format(frontAvg, backAvg, randomAvg))
-        
-if __name__ == "__main__":
-    main() 
+        rounds += 1
+
+
+if len(sys.argv) != 5:
+    print('usage: ./boardSim [numRuns] [numRows] [layout] [printPlane]')
+    print('numRuns - Number of runs to take the average of')
+    print('numRows - Number of rows in the airplane')
+    print('layout - one of "737", "747", "a380"')
+    print('printPlane - 1 if you want the plane to be printed, 0 otherwise')
+    sys.exit(0)
+
+runs = int(sys.argv[1])
+rows = int(sys.argv[2])
+if sys.argv[3] == '737':
+    plane = g_737
+elif sys.argv[3] == '747':
+    plane = g_747
+elif sys.argv[3] == 'a380':
+    plane = g_a380
+else:
+    raise Exception(f'Unknown layout - {sys.argv[3]}')
+
+printPlane = True if sys.argv[4] == '1' else False
+
+batch = rows//5
+methods = [ # methods - pass along with a batch parameter defined above
+    'row-back',
+    'random',
+    'row-front',
+]
+
+bag = { # actual baggage time is rounded to nearest integer
+    'mu': 18,
+    'sigma': 6,
+}
+
+avgs = [0 for i in range(len(methods))]
+for i in range(runs):
+    for i,method in enumerate(methods):
+        avgs[i] += run(rows, plane, (method,batch), bag, printPlane)
+
+for i,av in enumerate(avgs):
+    print(f'{methods[i][0]} - {round(av/runs,2)}')
