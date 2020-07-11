@@ -2,7 +2,9 @@ import random
 import os
 import sys
 import time
+import numpy as np
 from pprint import pprint
+from ticket import TicketBlock
 
 AIR_LAYOUT = {
     '737': (0,0,0,1,0,0,0),
@@ -12,14 +14,16 @@ AIR_LAYOUT = {
 
 class Agent(object):
 
-    def __init__(self, seat, baggage, plane):
+    def __init__(self, row, seat, baggage, plane):
         self.seat = seat #row, col
         self.pos = [-1, -1]
         self.moveCnt = -1
         self.curMove = ''
         self.baggage = baggage
         self.plane = plane
-        self.group = None
+        self.block = None
+        self.group = False
+        self.group_members = []
 
     def __str__(self):
         return f'{self.seat} | {self.pos} | {self.baggage} | {self.group}'
@@ -184,20 +188,8 @@ class Plane(object):
     def empty(self, row, col):
         return len(self.squares[row][col]) == 0 and len(self.nextSquares[row][col]) == 0
 
-def flatten(lst): # Flatten a 2-d list
-    return [elem for row in lst for elem in row]
-
-def set_groups(rows, passengers):
-    """ Divide passengers into groups """
-    # Currently emulating Window - middle aisle (back to front)
-    # Only works for 737 for now
-    for passenger in flatten(passengers):
-        if passenger.seat[1] in [0,6]:
-            passenger.group = 1
-        elif passenger.seat[1] in [1,5]:
-            passenger.group = 2
-        else:
-            passenger.group = 3
+# Flatten a 2-d list
+flatten = lambda lst: [elem for row in lst for elem in row]
 
 def run(rows, layout, method, bag, batch_size=None, printPlane=False):
     plane = Plane(rows, layout)
@@ -218,7 +210,8 @@ def run(rows, layout, method, bag, batch_size=None, printPlane=False):
             curRow.append(Agent([row, col], baggage, plane))
         passangers.append(curRow)
 
-    set_groups(rows, passangers)
+    ticket = TicketBlock(rows,passangers)
+    ticket.wma_b2f() # Divide into blocks according to chosen scheme
 
     # form queue
     queue = []
@@ -233,11 +226,11 @@ def run(rows, layout, method, bag, batch_size=None, printPlane=False):
         queue = flatten(passangers)
         random.shuffle(queue)
 
-    elif method == 'groups-asc':
-        queue = sorted(flatten(passangers), key=lambda x: x.group)
+    elif method == 'block-asc':
+        queue = sorted(flatten(passangers), key=lambda x: x.block)
 
-    elif method == 'groups-desc':
-        queue = sorted(flatten(passangers), key=lambda x: x.group, reverse=True)
+    elif method == 'block-desc':
+        queue = sorted(flatten(passangers), key=lambda x: x.block, reverse=True)
 
     else:
         raise Exception(f'No method name {method}')
@@ -305,10 +298,10 @@ def run(rows, layout, method, bag, batch_size=None, printPlane=False):
                         print('_', end='')
                 print('')
             print('\nCurrent round: {}'.format(rounds))
-            time.sleep(0.04)
-
+            time.sleep(wait_time)
         rounds += 1
 
+################## Driver code #####################
 
 if len(sys.argv) != 5:
     print('usage: ./boardSim [numRuns] [numRows] [layout] [printPlane]')
@@ -329,19 +322,27 @@ methods = [ # methods of boarding
     'random',
     'row-back',
     'row-front',
-    'groups-asc', # in ascending order of groups
-    'groups-desc' # in descending number of groups
+    'block-asc', # in ascending order of groups
+    'block-desc' # in descending number of groups
+]
+
+block_methods = [
+    'wma', # Window-middle-aisle (3 classes)
+    'wma_b2f', # Window-middle-aisle back to front (9 classes)
 ]
 
 bag = { # actual baggage time is rounded to nearest integer
     'mu': 9,
     'sigma': 2,
 }
+wait_time = 0.04
 
-avgs = [0 for i in range(len(methods))]
+avg = np.zeros((len(methods),len(block_methods)), dtype=np.float32)
 for i in range(runs):
-    for i,method in enumerate(methods):
-        avgs[i] += run(rows, plane, method, bag, batch_size=batch, printPlane=printPlane)
+    for j,method in enumerate(methods):
+        for k,block_method in enumerate(block_methods):
+            avg[j,k] += run(rows, plane, method, bag, batch_size=batch, printPlane=printPlane)/runs
 
-for i,av in enumerate(avgs):
-    print(f'{methods[i][0]} - {round(av/runs,2)}')
+for j,method in enumerate(methods):
+    for k,block_method in enumerate(block_methods):
+        print(f'Average | {method} | {block_method} | {round(avg[j,k],2)}')
