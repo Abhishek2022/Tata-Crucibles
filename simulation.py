@@ -16,19 +16,23 @@ AIR_LAYOUT = {
 class Agent(object):
 
     def __init__(self, id, seat, baggage, plane):
-        self.seat = seat #row, col
+        self.seat = seat # row, col
         self.id = id
         self.pos = [-1, -1]
         self.moveCnt = -1
         self.curMove = ''
         self.baggage = baggage
         self.plane = plane
-        self.block = None
+        self.block = None # Block number printed on his ticket
         self.group = False
+        self.first = False # if first member of group
         self.group_members = [] # other members of the group
 
     def __str__(self):
-        return f'{self.id} | {self.seat} | {self.pos} | {self.baggage} | {self.group} | {self.group_members}'
+        if self.group:
+            return f'P: [{self.id}, {self.block},  {self.seat}] - {self.baggage} | {self.group_members}'
+        else:
+            return f'P: [{self.id}, {self.block},  {self.seat}] - {self.baggage}'
 
     def __repr__(self):
         return self.__str__()
@@ -193,11 +197,32 @@ class Plane(object):
 # Flatten a 2-d list
 flatten = lambda lst: [elem for row in lst for elem in row]
 
-def find(passengers, id):
-    for pas in flatten(passengers):
+def find(lst, id):
+    for pas in flatten(lst):
         if id == pas.id:
             return pas
     raise Exception(f'No passenger with id {id}')
+
+def find_flat(lst,id):
+    for pas in lst:
+        if id == pas.id:
+            return pas
+    raise Exception(f'No passenger with id {id}')
+
+def rearrange_groups(queue):
+    """
+    Rearrange the list such that groups appear together
+    List should be 1-d
+    """
+    q_copy = queue[:]
+    for i,pas in enumerate(q_copy):
+        if pas.first:
+            for j,member_id in enumerate(pas.group_members):
+                new_pas = find_flat(q_copy, member_id)
+                q_copy.remove(new_pas)
+                orig_ind = q_copy.index(find_flat(q_copy, pas.id))
+                q_copy.insert(orig_ind+j+1, new_pas)
+    return q_copy
 
 def create_pass(rows, plane, sc, groups): # create passengers
     passengers = []
@@ -213,31 +238,33 @@ def create_pass(rows, plane, sc, groups): # create passengers
     all = list(range(rows*len(sc)))
     all_grps = []
     for k,v in groups.items():
-        print(k,v)
         num_groups = int(v*len(all))
         for i in range(num_groups):
             initial = np.random.choice(all)
             group = []
             ind = all.index(initial)
+            bi = 1
             for j in range(k):
                 if ind+j >= len(all):
-                    group.append(all[ind-k])
-                    k+=1
+                    group.append(all[ind-bi])
+                    bi+=1
                 else:
                     group.append(all[ind+j]) # Add passengers to this group
 
             all = [p for p in all if p not in group] # remove group passengers from list of all passengers
             all_grps.append(group)
 
-            for group_mem in group: # add groups to agents
+            for j,group_mem in enumerate(sorted(group)): # add groups to agents
                 pas = find(passengers,group_mem)
                 pas.group = True
-                pas.group_members = group.copy()
+                if j == 0:
+                    pas.first = True
+                pas.group_members = sorted(group.copy())
                 pas.group_members.remove(group_mem)
 
     return passengers
 
-def run(rows, layout, method, block_method, bag, groups, batch_size=None, printPlane=False):
+def run(rows, layout, block_method, bag, groups, batch_size=None, printPlane=False):
     plane = Plane(rows, layout) # Set up plane according to layout
     seatCols = []
     aisleCols = []
@@ -247,41 +274,21 @@ def run(rows, layout, method, block_method, bag, groups, batch_size=None, printP
         else:
             aisleCols.append(i)
 
-    passengers = create_pass(rows, plane, seatCols, groups)
-
-    pprint(flatten(passengers))
-    return
+    passengers = create_pass(rows, plane, seatCols, groups) # create the passengers along with their groups
 
     ticket = TicketBlock(rows,passengers)
     ticket.set_block(block_method) # Divide into blocks according to chosen scheme
 
     # form queue
-    queue = []
-    if method == 'row-front':
-        queue = flatten(passengers)
-
-    elif method == 'row-back':
-        #batch = flatten(passengers[rows-i-step:rows-i])
-        queue = list(reversed(flatten(passengers)))
-
-    elif method == 'random':
-        queue = flatten(passengers)
-        random.shuffle(queue)
-
-    elif method == 'block-asc':
-        queue = sorted(flatten(passengers), key=lambda x: x.block)
-
-    elif method == 'block-desc':
-        queue = sorted(flatten(passengers), key=lambda x: x.block, reverse=True)
-
-    else:
-        raise Exception(f'No method name {method}')
+    queue = sorted(flatten(passengers), key=lambda x: x.block)
 
     if batch_size is not None: # Break passengers into batches only if batch_size is set
         for i in range(0,rows*len(seatCols),batch_size*len(seatCols)):
             slice = queue[i:i+batch_size*len(seatCols)]
             random.shuffle(slice)
             queue[i:i+batch_size*len(seatCols)] = slice # slices are immutable
+
+    queue = rearrange_groups(queue) # Enable grouping passengers
 
     # run things
     rounds = 0
@@ -310,7 +317,7 @@ def run(rows, layout, method, block_method, bag, groups, batch_size=None, printP
         # print plane
         if printPlane:
             os.system('clear')
-            print(f'method: {method} | block method: {block_method} | batch: {batch_size}')
+            print(f'method: {block_method} | batch: {batch_size}')
             for _ in range(len(layout) + 1):
                 print("", end='')
             for _ in range(len(queue)):
@@ -360,17 +367,14 @@ plane = AIR_LAYOUT['737']
 
 printPlane = True if sys.argv[3] == '1' else False
 
+ ############## Parameters ###################
+
 batch = rows//3 # 3 batches by default
 
-methods = [ # methods of boarding
+block_methods = [ # Methods of dividing passengers into blocks
     'random',
-    'row-back',
-    'row-front',
-    'block-asc', # in ascending order of groups
-    'block-desc' # in descending number of groups
-]
-
-block_methods = [
+    'b2f', # back to front
+    'f2b', # Front to back
     'wma', # Window-middle-aisle (3 classes)
     'wma_b2f', # Window-middle-aisle back to front (9 classes)
 ]
@@ -388,18 +392,18 @@ groups = { # percentage of groups, must add up to < 1 (remaining are solo)
     4: 0.1,
 }
 
-avg = np.zeros((len(methods),len(block_methods)), dtype=np.float32)
-for j,method in enumerate(methods):
-    for k,block_method in enumerate(block_methods):
-        #if not printPlane:
-        #    rng = tqdm(range(runs))
-        #    print(method, block_method)
-        #else:
-        rng = range(runs)
-        for i in rng:
-            avg[j,k] += run(rows, plane, method, block_method, bag, groups, batch_size=batch, printPlane=printPlane)/runs
+############################################
+
+avg = np.zeros(len(block_methods), dtype=np.float32)
+for j,block_method in enumerate(block_methods):
+    if not printPlane:
+        print(block_method)
+        for i in tqdm(range(runs)):
+            avg[j] += run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)/runs
+    else:
+        for i in range(runs):
+            avg[j] += run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)/runs
 
 print('Average time')
-for j,method in enumerate(methods):
-    for k,block_method in enumerate(block_methods):
-        print(f'\t{method} | {block_method} | {round(float(avg[j,k]),3)}')
+for j,block_method in enumerate(block_methods):
+    print(f'\t{block_method} | {round(float(avg[j]),3)}')
