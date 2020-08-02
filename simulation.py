@@ -241,6 +241,8 @@ def create_pass(rows, plane, sc, groups): # create passengers
     for k,v in groups.items():
         num_groups = int(v*len(all))
         for i in range(num_groups):
+            if not all:
+                break
             initial = np.random.choice(all)
             group = []
             ind = all.index(initial)
@@ -389,8 +391,8 @@ wait_time = 0.04
 
 groups = { # percentage of groups, must add up to < 1 (remaining are solo)
     2: 0.1,
-    3: 0.1,
-    4: 0.1,
+    3: 0.3,
+    4: 0.3,
 }
 
 ############################################
@@ -407,15 +409,17 @@ avg = np.zeros(len(block_methods), dtype=np.float32)
 for j,block_method in enumerate(block_methods):
     if not printPlane:
         print(block_method)
-        for i in tqdm(range(runs)):
+        for i in tqdm(range(1,runs+1)):
             run_time = run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)
-            time_plot[block_method].append(run_time)
             avg[j] += run_time/runs
+            curr_avg = avg[j] * runs / i
+            time_plot[block_method].append(curr_avg)
     else:
-        for i in range(runs):
+        for i in range(1,runs+1):
             run_time = run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)
-            time_plot[block_method].append(run_time)
             avg[j] += run_time/runs
+            curr_avg = avg[j] * runs / i
+            time_plot[block_method].append(curr_avg)
 
 print('Average time')
 for j,block_method in enumerate(block_methods):
