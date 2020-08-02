@@ -344,4 +344,4 @@ for i in range(runs):
         avgs[i] += run(rows, plane, method, bag, batch_size=batch, printPlane=printPlane)
 
 for i,av in enumerate(avgs):
-    print(f'{methods[i][0]} - {round(av/runs,2)}')
+    print(f'{methods[i]} - {round(av/runs,2)}')
