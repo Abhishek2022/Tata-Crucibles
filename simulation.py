@@ -240,16 +240,20 @@ def create_pass(rows, plane, sc, groups): # create passengers
     for k,v in groups.items():
         num_groups = int(v*len(all))
         for i in range(num_groups):
+            if not all: # Break if no passengers left
+                break
             initial = np.random.choice(all)
             group = []
             ind = all.index(initial)
-            bi = 1
+            mul = 1
+            if abs(all[(ind-1)%len(all)]-all[ind]) < abs(all[(ind+1)%len(all)]-all[ind]):
+                mul = -1
             for j in range(k):
-                if ind+j >= len(all):
-                    group.append(all[ind-bi])
-                    bi+=1
-                else:
-                    group.append(all[ind+j]) # Add passengers to this group
+                cind = (ind+mul*j)%len(all)
+                group.append(all[cind]) # Add passengers to this group
+
+            if len(group) != len(set(group)): # Break if passengers repeat in groups
+                break
 
             all = [p for p in all if p not in group] # remove group passengers from list of all passengers
             all_grps.append(group)
@@ -261,7 +265,6 @@ def create_pass(rows, plane, sc, groups): # create passengers
                     pas.first = True
                 pas.group_members = sorted(group.copy())
                 pas.group_members.remove(group_mem)
-
     return passengers
 
 def run(rows, layout, block_method, bag, groups, batch_size=None, printPlane=False):
@@ -372,9 +375,9 @@ printPlane = True if sys.argv[3] == '1' else False
 batch = rows//3 # 3 batches by default
 
 block_methods = [ # Methods of dividing passengers into blocks
-    'random',
+    #'random',
     'b2f', # back to front
-    'f2b', # Front to back
+    #'f2b', # Front to back
     'wma', # Window-middle-aisle (3 classes)
     'wma_b2f', # Window-middle-aisle back to front (9 classes)
 ]
@@ -389,7 +392,7 @@ wait_time = 0.04
 groups = { # percentage of groups, must add up to < 1 (remaining are solo)
     2: 0.1,
     3: 0.1,
-    4: 0.1,
+    4: 0.7,
 }
 
 ############################################
