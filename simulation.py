@@ -376,7 +376,7 @@ printPlane = True if sys.argv[3] == '1' else False
 
  ############## Parameters ###################
 
-batch = rows//3 # 3 batches by default
+batch = None # 3 batches by default
 
 block_methods = [ # Methods of dividing passengers into blocks
     'stf_perf',
@@ -403,13 +403,7 @@ groups = { # percentage of groups, must add up to < 1 (remaining are solo)
 
 ############################################
 
-time_plot = {
-    'random' : [],
-    'b2f': [],
-    'f2b': [],
-    'wma': [],
-    'wma_b2f': []
-}
+time_plot = { k:[] for k in block_methods }
 
 avg = np.zeros(len(block_methods), dtype=np.float32)
 for j,block_method in enumerate(block_methods):
