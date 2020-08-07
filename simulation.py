@@ -375,9 +375,11 @@ printPlane = True if sys.argv[3] == '1' else False
 batch = rows//3 # 3 batches by default
 
 block_methods = [ # Methods of dividing passengers into blocks
-    #'random',
+    'stf_perf',
+    'stf_mod',
+    'random',
     'b2f', # back to front
-    #'f2b', # Front to back
+    'f2b', # Front to back
     'wma', # Window-middle-aisle (3 classes)
     'wma_b2f', # Window-middle-aisle back to front (9 classes)
 ]
@@ -392,7 +394,7 @@ wait_time = 0.04
 groups = { # percentage of groups, must add up to < 1 (remaining are solo)
     2: 0.1,
     3: 0.1,
-    4: 0.7,
+    4: 0.1,
 }
 
 ############################################

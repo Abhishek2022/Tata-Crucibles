@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 # Flatten a 2-d list
 flatten = lambda lst: [elem for row in lst for elem in row]
@@ -21,6 +22,12 @@ class TicketBlock(object):
             self.wma()
         elif name == 'wma_b2f':
             self.wma_b2f()
+        elif name == 'stf_perf':
+            self.steffen_perfect()
+        elif name == 'stf_mod':
+            self.steffen_modified()
+        else:
+            raise Exception(f'{name} is not defined in ticket.py')
 
     def random(self):
         """
@@ -92,3 +99,37 @@ class TicketBlock(object):
                     passenger.block = (8,-passenger.id)
                 else:
                     passenger.block = (9,-passenger.id)
+
+    def steffen_perfect(self):
+        row = self.rows
+        for passenger in self.passengers:
+            if passenger.seat[1] == 0:
+                passenger.block = (1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+            elif passenger.seat[1] == 6:
+                passenger.block = row/2 +(1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+            elif passenger.seat[1] == 1:
+                passenger.block = 2*row + (1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+            elif passenger.seat[1] == 5:
+                passenger.block = 5*row/2 +(1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+            elif passenger.seat[1] == 2:
+                passenger.block = 4*row + (1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+            else:
+                passenger.block = 9*row/2 +(1-(row-passenger.seat[0])%2)*row + (row-passenger.seat[0])/2
+
+    def steffen_modified(self):
+        for passenger in self.passengers:
+            if passenger.seat[1] in [0,1,2]:
+                if (self.rows - passenger.seat[0])%2:
+                    passenger.block = (1, -passenger.id)
+                else:
+                    passenger.block = (3, -passenger.id)
+            else:
+                if (self.rows - passenger.seat[0])%2:
+                    passenger.block = (2, -passenger.id)
+                else:
+                    passenger.block = (4, -passenger.id)
