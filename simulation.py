@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from pprint import pprint
 from ticket import TicketBlock
+import matplotlib.pyplot as plt
 
 AIR_LAYOUT = {
     '737': (0,0,0,1,0,0,0),
@@ -396,22 +397,47 @@ wait_time = 0.04
 
 groups = { # percentage of groups, must add up to < 1 (remaining are solo)
     2: 0.1,
-    3: 0.1,
-    4: 0.1,
+    3: 0.3,
+    4: 0.3,
 }
 
 ############################################
+
+time_plot = {
+    'random' : [],
+    'b2f': [],
+    'f2b': [],
+    'wma': [],
+    'wma_b2f': []
+}
 
 avg = np.zeros(len(block_methods), dtype=np.float32)
 for j,block_method in enumerate(block_methods):
     if not printPlane:
         print(block_method)
-        for i in tqdm(range(runs)):
-            avg[j] += run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)/runs
+        for i in tqdm(range(1,runs+1)):
+            run_time = run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)
+            avg[j] += run_time/runs
+            curr_avg = avg[j] * runs / i
+            time_plot[block_method].append(curr_avg)
     else:
-        for i in range(runs):
-            avg[j] += run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)/runs
+        for i in range(1,runs+1):
+            run_time = run(rows, plane, block_method, bag, groups, batch_size=batch, printPlane=printPlane)
+            avg[j] += run_time/runs
+            curr_avg = avg[j] * runs / i
+            time_plot[block_method].append(curr_avg)
 
 print('Average time')
 for j,block_method in enumerate(block_methods):
     print(f'\t{block_method} | {round(float(avg[j]),3)}')
+
+
+# Plotting runtimes
+for j,block_method in enumerate(block_methods):
+    plt.plot(range(1,runs+1), time_plot[block_method], label=block_method)
+
+plt.title(f"Running time of different boarding schemes over {runs} iterations")
+plt.xlabel("Number of iterations")
+plt.ylabel("No of rounds taken")
+plt.legend(bbox_to_anchor=(1.1, 1.05))
+plt.show()

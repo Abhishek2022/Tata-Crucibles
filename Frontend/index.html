@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> Content Handling </title>
+
+  <link rel="stylesheet" href="main.css">
+    <!-- CSS only -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+  <!-- JS, Popper.js, and jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a class="navbar-brand" href="#"> Vistara Airlines </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <div class="navbar-nav">
+          <a class="nav-item nav-link active" href="index.html"> Queue Management <span class="sr-only">(current)</span></a>
+          <a class="nav-item nav-link" href="#">Live Video</a>
+        </div>
+      </div>
+    </nav>
+
+    <div id="carouselExampleInterval" class="carousel slide" data-ride="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active" data-interval="10000">
+          <img src="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.thehindu.com%2Fnews%2Fcities%2FDelhi%2Fman-arrested-for-molesting-vistara-air-hostess-at-delhi-airport%2Farticle23370758.ece&psig=AOvVaw3hKvHEvo5IlauXnANyqC4m&ust=1594532725093000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCNiS4r-_xOoCFQAAAAAdAAAAABAD" class="d-block w-100" alt="flight">
+        </div>
+        <div class="carousel-item" data-interval="2000">
+          <img src="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.bangaloreaviation.com%2F2014%2F08%2Ftata-sia-launches-new-full-service-airline-vistara.html&psig=AOvVaw3hKvHEvo5IlauXnANyqC4m&ust=1594532725093000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCNiS4r-_xOoCFQAAAAAdAAAAABAJ" class="d-block w-100" alt="members">
+        </div>
+      </div>
+      <a class="carousel-control-prev" href="#carouselExampleInterval" role="button" data-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="sr-only">Previous</span>
+      </a>
+      <a class="carousel-control-next" href="#carouselExampleInterval" role="button" data-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="sr-only">Next</span>
+      </a>
+    </div>
+
+    <div class="row">
+      <div class="col-md-1"></div>
+      <div class="col-md-2">
+        <h2> Queue 1 </h2>
+        <button type="button" onclick="clickCounter1()" class="btn"> + </button>
+        <button type="button" onclick="clickCounter2()" class="btn"> - </button>
+        <h6>Count: </h6>
+        <h6 id="result1"></h6>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
+          </div>
+        </div>
+        <h4 id="person"></h4>
+      </div>
+      <div class="col-md-2">
+        <h2> Queue 2 </h2>
+        <button type="button" onclick="clickCounter3()" class="btn"> + </button>
+        <button type="button" onclick="clickCounter4()" class="btn"> - </button>
+        <h6>Count: </h6>
+        <h6 id="result2"></h6>
+      </div>
+      <div class="col-md-2">
+        <h2> Queue 3 </h2>
+        <button type="button" onclick="clickCounter5()" class="btn"> + </button>
+        <button type="button" onclick="clickCounter6()" class="btn"> - </button>
+        <h6>Count: </h6>
+        <h6 id="result3"></h6>
+      </div>
+      <div class="col-md-2">
+        <h2> Queue 4 </h2>
+        <button type="button" onclick="clickCounter7()" class="btn"> + </button>
+        <button type="button" onclick="clickCounter8()" class="btn"> - </button>
+        <h6>Count: </h6>
+        <h6 id="result4"></h6>
+      </div>
+      <div class="col-md-2">
+        <h2> Queue 5 </h2>
+        <button type="button" onclick="clickCounter9()" class="btn"> + </button>
+        <button type="button" onclick="clickCounter10()" class="btn"> - </button>
+        <h6>Count: </h6>
+        <h6 id="result5"></h6>
+      </div>
+      <div class="col-md-1"></div>
+    </div>
+    <h3>The final Observation shows that: </h3>
+    <h3 id="result"></h3>
+  </div>
+  <script src="system.js"></script>
+</body>
+</html>
