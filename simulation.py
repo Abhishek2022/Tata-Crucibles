@@ -282,6 +282,9 @@ def run(rows, layout, block_method, bag, groups, batch_size=None, printPlane=Fal
     ticket = TicketBlock(rows,passengers)
     ticket.set_block(block_method) # Divide into blocks according to chosen scheme
 
+    #ticket.show_board_plan()
+    #return
+
     # form queue
     queue = sorted(flatten(passengers), key=lambda x: x.block)
 
