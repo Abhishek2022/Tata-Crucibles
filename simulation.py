@@ -241,18 +241,20 @@ def create_pass(rows, plane, sc, groups): # create passengers
     for k,v in groups.items():
         num_groups = int(v*len(all))
         for i in range(num_groups):
-            if not all:
+            if not all: # Break if no passengers left
                 break
             initial = np.random.choice(all)
             group = []
             ind = all.index(initial)
-            bi = 1
+            mul = 1
+            if abs(all[(ind-1)%len(all)]-all[ind]) < abs(all[(ind+1)%len(all)]-all[ind]):
+                mul = -1
             for j in range(k):
-                if ind+j >= len(all):
-                    group.append(all[ind-bi])
-                    bi+=1
-                else:
-                    group.append(all[ind+j]) # Add passengers to this group
+                cind = (ind+mul*j)%len(all)
+                group.append(all[cind]) # Add passengers to this group
+
+            if len(group) != len(set(group)): # Break if passengers repeat in groups
+                break
 
             all = [p for p in all if p not in group] # remove group passengers from list of all passengers
             all_grps.append(group)
@@ -264,7 +266,6 @@ def create_pass(rows, plane, sc, groups): # create passengers
                     pas.first = True
                 pas.group_members = sorted(group.copy())
                 pas.group_members.remove(group_mem)
-
     return passengers
 
 def run(rows, layout, block_method, bag, groups, batch_size=None, printPlane=False):
@@ -281,6 +282,9 @@ def run(rows, layout, block_method, bag, groups, batch_size=None, printPlane=Fal
 
     ticket = TicketBlock(rows,passengers)
     ticket.set_block(block_method) # Divide into blocks according to chosen scheme
+
+    #ticket.show_board_plan()
+    #return
 
     # form queue
     queue = sorted(flatten(passengers), key=lambda x: x.block)
@@ -372,9 +376,11 @@ printPlane = True if sys.argv[3] == '1' else False
 
  ############## Parameters ###################
 
-batch = rows//3 # 3 batches by default
+batch = None # 3 batches by default
 
 block_methods = [ # Methods of dividing passengers into blocks
+    'stf_perf',
+    'stf_mod',
     'random',
     'b2f', # back to front
     'f2b', # Front to back
@@ -397,13 +403,7 @@ groups = { # percentage of groups, must add up to < 1 (remaining are solo)
 
 ############################################
 
-time_plot = {
-    'random' : [],
-    'b2f': [],
-    'f2b': [],
-    'wma': [],
-    'wma_b2f': []
-}
+time_plot = { k:[] for k in block_methods }
 
 avg = np.zeros(len(block_methods), dtype=np.float32)
 for j,block_method in enumerate(block_methods):
